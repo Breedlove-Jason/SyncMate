@@ -1,3 +1,9 @@
+import os
+import sys
+
+from PySide6.QtCore import Qt
+# from PyQt5.QtCore import Qt
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
@@ -7,21 +13,31 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QApplication,
     QComboBox,
+    QHBoxLayout,
+    QGridLayout
 )
-import sys
 
 
 class SyncMateGUI(QWidget):
     def __init__(self):
         super().__init__()
 
+        # Logo (with reduced size)
+        self.logo_label = QLabel(self)
+        logo_path = os.path.join(os.path.dirname(__file__), "resources", "syncmate_logo.jpeg")
+        self.logo_pixmap = QPixmap(logo_path)
+        self.logo_pixmap = self.logo_pixmap.scaled(
+            300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
+        self.logo_label.setPixmap(self.logo_pixmap)
+        self.logo_label.setAlignment(Qt.AlignCenter)
+
         # Inputs
         self.dest_input = QLineEdit(self)
-        self.source_input = QLineEdit(self)
+        self.dest_input.setPlaceholderText("Destination")
 
-        # Labels
-        self.dest_label = QLabel("Destination", self)
-        self.source_label = QLabel("Source", self)
+        self.source_input = QLineEdit(self)
+        self.source_input.setPlaceholderText("Source")
 
         # File/Directory selection type dropdown
         self.source_type = QComboBox(self)
@@ -32,51 +48,60 @@ class SyncMateGUI(QWidget):
 
         # Buttons
         self.source_browse_btn = QPushButton("Browse", self)
+        self.source_browse_btn.setIcon(QIcon("resources/folder-open.svg"))  # Placeholder
         self.dest_browse_btn = QPushButton("Browse", self)
+        self.dest_browse_btn.setIcon(QIcon("resources/folder-open.svg"))    # Placeholder
 
         # Connect browse buttons to the browse methods
         self.source_browse_btn.clicked.connect(self.browse_source)
         self.dest_browse_btn.clicked.connect(self.browse_dest)
 
-        # Set up the layout
-        layout = QVBoxLayout()
+        # Set up the main layout
+        main_layout = QVBoxLayout()
+        main_layout.addWidget(self.logo_label)
 
-        # Add widgets to the layout
-        layout.addWidget(self.source_label)
-        layout.addWidget(self.source_input)
-        layout.addWidget(self.source_type)  # Add the file/directory dropdown
-        layout.addWidget(self.source_browse_btn)
+        # Create a grid layout for inputs
+        grid_layout = QGridLayout()
 
-        layout.addWidget(self.dest_label)
-        layout.addWidget(self.dest_input)
-        layout.addWidget(self.dest_type)  # Add the file/directory dropdown
-        layout.addWidget(self.dest_browse_btn)
+        # Source row
+        grid_layout.addWidget(self.source_input, 0, 0)
+        grid_layout.addWidget(self.source_type, 0, 1)
+        grid_layout.addWidget(self.source_browse_btn, 0, 2)
 
-        self.setLayout(layout)
-        self.setGeometry(300, 300, 400, 400)
+        # Destination row
+        grid_layout.addWidget(self.dest_input, 1, 0)
+        grid_layout.addWidget(self.dest_type, 1, 1)
+        grid_layout.addWidget(self.dest_browse_btn, 1, 2)
+
+        # Set column stretch to make input fields expand
+        grid_layout.setColumnStretch(0, 1)  # Input field column
+        grid_layout.setColumnStretch(1, 0)  # Type dropdown column
+        grid_layout.setColumnStretch(2, 0)  # Browse button column
+
+        # Add grid layout to main layout
+        main_layout.addLayout(grid_layout)
+
+        self.setLayout(main_layout)
+
+        # Load external stylesheet
+        self.load_stylesheet()
+
+        self.setGeometry(300, 300, 600, 200)
         self.setWindowTitle("SyncMate Rsync Tool")
 
     def browse_source(self):
-        print("Opening source directory dialog...")  # Debugging log
         if self.source_type.currentText() == "Directory":
             # Browse for directory
             dir_name = QFileDialog.getExistingDirectory(self, "Select Source Directory")
             if dir_name:
                 self.source_input.setText(dir_name)
-                print(f"Source directory selected: {dir_name}")  # Debugging log
-            else:
-                print("No source directory selected.")  # Debugging log
         else:
             # Browse for file
             file_name, _ = QFileDialog.getOpenFileName(self, "Select Source File")
             if file_name:
                 self.source_input.setText(file_name)
-                print(f"Source file selected: {file_name}")  # Debugging log
-            else:
-                print("No source file selected.")  # Debugging log
 
     def browse_dest(self):
-        print("Opening destination directory dialog...")  # Debugging log
         if self.dest_type.currentText() == "Directory":
             # Browse for directory
             dir_name = QFileDialog.getExistingDirectory(
@@ -84,17 +109,17 @@ class SyncMateGUI(QWidget):
             )
             if dir_name:
                 self.dest_input.setText(dir_name)
-                print(f"Destination directory selected: {dir_name}")  # Debugging log
-            else:
-                print("No destination directory selected.")  # Debugging log
         else:
             # Browse for file
             file_name, _ = QFileDialog.getOpenFileName(self, "Select Destination File")
             if file_name:
                 self.dest_input.setText(file_name)
-                print(f"Destination file selected: {file_name}")  # Debugging log
-            else:
-                print("No destination file selected.")  # Debugging log
+
+    def load_stylesheet(self):
+        # Load stylesheet from external .qss file
+        qss_path = os.path.join(os.path.dirname(__file__), "resources", "styles.qss")
+        with open(qss_path, "r") as file:
+            self.setStyleSheet(file.read())
 
 
 if __name__ == "__main__":

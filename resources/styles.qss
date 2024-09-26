@@ -1,0 +1,51 @@
+/* styles.qss */
+
+/* General widget styles */
+QWidget {
+    background-color: #320240; /* dark-purple */
+    color: #FFFFFF;            /* light-text */
+}
+
+/* Label styles */
+/*QLabel {*/
+/*    font-size: 14px;*/
+/*    color: #0CF2DB;            *//* aqua */
+/*}*/
+
+/* Line edit styles */
+QLineEdit {
+    background-color: #8C2B2B; /* dark-red */
+    border: 1px solid #F21BCE; /* magenta */
+    padding: 6px;
+    font-size: 14px;
+    color: #FFFFFF;            /* light-text */
+    border-radius: 4px;
+}
+
+/* Combo box styles */
+QComboBox {
+    background-color: #8C2B2B; /* dark-red */
+    color: #FFFFFF;            /* light-text */
+    border: 1px solid #F21BCE; /* magenta */
+    padding: 6px;
+    border-radius: 4px;
+}
+
+/* Push button styles */
+QPushButton {
+    background-color: #F24F13; /* orange */
+    color: #FFFFFF;            /* light-text */
+    border: none;
+    padding: 10px;
+    font-size: 14px;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+QPushButton:hover {
+    background-color: #FF6A33; /* lighter shade of orange */
+}
+
+QPushButton:pressed {
+    background-color: #C63D0F; /* darker shade of orange */
+}
