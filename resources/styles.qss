@@ -1,24 +1,20 @@
-/* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@200;400;600;800&display=swap');
-
 /* General widget styles */
 QWidget {
     background-color: #1F1820;
-/*    background-color: #320240;  dark-purple*/
-    color: #0CF2DB;             light-text
-    font-family: 'Source Sans 3', sans-serif;
+    color: #0CF2DB;
+    font-family: 'Source Sans Pro', 'sans-serif';
 }
 
 /* Title Label Style */
 QLabel#title_label {
-    font-size: 24px;
+    font-size: 32px;
     color: #0CF2DB;
     font-weight: 800;
     margin-bottom: 10px;
 }
 
 /* Line edit styles */
-QLineEdit {
+QLineEdit#source_input, QLineEdit#dest_input {
     background-color: #F21BCE;  /* magenta */
     border: 2px solid #0CF2DB;  /* aqua */
     border-radius: 10px;
@@ -33,7 +29,7 @@ QLineEdit::placeholder {
 }
 
 /* Custom QComboBox Style */
-QComboBox {
+QComboBox#source_type, QComboBox#dest_type {
     background-color: #F21BCE; /* magenta */
     color: #E5FDFD;            /* light-text */
     border: 2px solid #0CF2DB; /* aqua */
@@ -66,7 +62,7 @@ QComboBox QAbstractItemView {
 }
 
 /* Push button styles */
-QPushButton {
+QPushButton#source_browse_btn, QPushButton#dest_browse_btn {
     background-color: #F21BCE; /* magenta */
     color: #E5FDFD;
     border: 2px solid #0CF2DB; /* aqua */
@@ -76,41 +72,63 @@ QPushButton {
     font-weight: 800;
 }
 
-QPushButton:hover {
+QPushButton#source_browse_btn:hover, QPushButton#dest_browse_btn:hover {
     background-color: #FF6A33; /* lighter shade of orange */
 }
 
-QPushButton:pressed {
+QPushButton#source_browse_btn:pressed, QPushButton#dest_browse_btn:pressed {
     background-color: #C63D0F; /* darker shade of orange */
 }
 
-/* Adjust the icon size inside buttons */
-QPushButton QIcon {
-    width: 16px;
-    height: 16px;
+/* Sync button styles */
+QPushButton#sync_button {
+    background-color: #FF5733; /* unique color for sync button */
+    color: #E5FDFD;
+    border: 5px solid #0CF2DB; /* aqua */
+    padding: 10px;
+    min-width: 150px;
+    max-width: 150px;
+    font-size: 20px;
+/*    color: #0CF2DB;*/
+    border-radius: 10px;
+    font-weight: 800;
+    font-family: 'Source Sans Pro', "sans-serif";
+}
+
+QPushButton#sync_button:hover {
+    background-color: #FF6A33;  /* lighter shade */
+}
+
+QPushButton#sync_button:pressed {
+    background-color: #C63D0F; /* darker shade */
+}
+
+/* Sync button icon size */
+QPushButton#sync_button::icon {
+    min-width: 30px; /* Adjust the width as needed */
+    min-height: 30px; /* Adjust the height as needed */
 }
 
 /* Checkbox styles */
-QCheckBox {
+QCheckBox#dry_run_checkbox, QCheckBox#delete_checkbox, QCheckBox#compress_checkbox, QCheckBox#verbose_checkbox {
     color: #E5FDFD; /* Text color */
     font-size: 14px;
     font-weight: 600;
     padding: 5px;
 }
 
-
 QCheckBox::indicator {
     width: 16px;
     height: 16px;
 }
 
-QCheckBox::indicator:unchecked {
+QCheckBox#dry_run_checkbox::indicator:unchecked, QCheckBox#delete_checkbox::indicator:unchecked, QCheckBox#compress_checkbox::indicator:unchecked, QCheckBox#verbose_checkbox::indicator:unchecked {
     background-color: #F21BCE; /* Color for unchecked state */
     border: 2px solid #0CF2DB; /* Border color */
     border-radius: 3px;
 }
 
-QCheckBox::indicator:checked {
+QCheckBox#dry_run_checkbox::indicator:checked, QCheckBox#delete_checkbox::indicator:checked, QCheckBox#compress_checkbox::indicator:checked, QCheckBox#verbose_checkbox::indicator:checked {
     background-color: #0CF2DB; /* Color for checked state */
     border: 2px solid #F21BCE; /* Border color */
     border-radius: 3px;
@@ -131,6 +149,7 @@ QLineEdit#exclude_input {
 QLineEdit#exclude_input::placeholder {
     color: #E5FDFD; /* Ensure placeholder text is visible */
 }
+
 QLabel#exclude_label {
     font-size: 14px;
     color: #0CF2DB;

@@ -1,8 +1,8 @@
 import os
 import sys
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QIcon, QPixmap, QFontDatabase, QFont
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -23,6 +23,11 @@ from PySide6.QtWidgets import (
 class SyncMateGUI(QWidget):
     def __init__(self):
         super().__init__()
+
+        # Load custom font
+        source_sans_reg_path = os.path.join(os.path.dirname(__file__), "resources", "SourceSansPro-Regular.otf")
+        QFontDatabase.addApplicationFont(source_sans_reg_path)
+        self.setFont(QFont("Source Sans Pro", 16))
 
         # Logo (with reduced size)
         self.logo_label = QLabel(self)
@@ -45,20 +50,22 @@ class SyncMateGUI(QWidget):
         self.source_input = QLineEdit(self)
         self.source_input.setPlaceholderText("Source")
         self.source_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.source_input.setObjectName("source_input")
 
         self.dest_input = QLineEdit(self)
         self.dest_input.setPlaceholderText("Destination")
         self.dest_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.dest_input.setObjectName("dest_input")
 
         # Rsync options
         self.dry_run_checkbox = QCheckBox("--dry-run", self)
-        self.dry_run_checkbox.setObjectName("top_checkbox")
+        self.dry_run_checkbox.setObjectName("dry_run_checkbox")
         self.delete_checkbox = QCheckBox("--delete", self)
-        self.delete_checkbox.setObjectName("top_checkbox")
+        self.delete_checkbox.setObjectName("delete_checkbox")
         self.compress_checkbox = QCheckBox("--compress", self)
-        self.compress_checkbox.setObjectName("top_checkbox")
+        self.compress_checkbox.setObjectName("compress_checkbox")
         self.verbose_checkbox = QCheckBox("--verbose", self)
-        self.verbose_checkbox.setObjectName("top_checkbox")
+        self.verbose_checkbox.setObjectName("verbose_checkbox")
 
         # Exclude patterns
         self.exclude_label = QLabel("Exclude Patterns (comma-separated):", self)
@@ -70,18 +77,30 @@ class SyncMateGUI(QWidget):
         # File/Directory selection type dropdown
         self.source_type = QComboBox(self)
         self.source_type.addItems(["Directory", "File"])
+        self.source_type.setObjectName("source_type")
 
         self.dest_type = QComboBox(self)
         self.dest_type.addItems(["Directory", "File"])
+        self.dest_type.setObjectName("dest_type")
 
         # Buttons
+        self.sync_button = QPushButton("Start Sync", self)
+        self.sync_button.setObjectName("sync_button")
+        # self.sync_button.setIcon(QIcon("resources/sync.svg"))  # Set sync.svg icon
+        # Set sync.svg icon with specified size
+        self.sync_button.setIcon(QIcon("resources/sync.svg"))
+        self.sync_button.setIconSize(QSize(30, 30))
+        self.sync_button.clicked.connect(self.start_sync)
+
         self.source_browse_btn = QPushButton("Browse", self)
         self.source_browse_btn.setIcon(
             QIcon("resources/folder-open.svg")
         )  # Placeholder
+        self.source_browse_btn.setObjectName("source_browse_btn")
 
         self.dest_browse_btn = QPushButton("Browse", self)
         self.dest_browse_btn.setIcon(QIcon("resources/folder-open.svg"))  # Placeholder
+        self.dest_browse_btn.setObjectName("dest_browse_btn")
 
         # Connect browse buttons to the browse methods
         self.source_browse_btn.clicked.connect(self.browse_source)
@@ -139,6 +158,8 @@ class SyncMateGUI(QWidget):
         grid_layout.addLayout(options_layout, 3, 0, 1, 3)
 
         # Add grid layout to main layout
+        main_layout.addWidget(self.sync_button, alignment=Qt.AlignCenter)
+
         main_layout.addLayout(grid_layout)
 
         self.setLayout(main_layout)
@@ -211,6 +232,9 @@ class SyncMateGUI(QWidget):
             QMessageBox.warning(self, "Warning", "Source file does not exist.")
             return False
         return True
+
+    def start_sync(self):
+        pass
 
     def load_stylesheet(self):
         # Load stylesheet from external .qss file
