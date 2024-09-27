@@ -89,7 +89,6 @@ QPushButton#sync_button {
     min-width: 150px;
     max-width: 150px;
     font-size: 20px;
-/*    color: #0CF2DB;*/
     border-radius: 10px;
     font-weight: 800;
     font-family: 'Source Sans Pro', "sans-serif";

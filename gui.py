@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QPixmap, QFontDatabase, QFont
@@ -18,6 +19,8 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QCheckBox,
 )
+
+from rsync_manager import RsyncThread
 
 
 class SyncMateGUI(QWidget):
