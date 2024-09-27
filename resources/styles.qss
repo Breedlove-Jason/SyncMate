@@ -1,45 +1,78 @@
-/* styles.qss */
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@200;400;600;800&display=swap');
 
 /* General widget styles */
 QWidget {
     background-color: #320240; /* dark-purple */
-    color: #FFFFFF;            /* light-text */
+    color: #0CF2DB;            /* light-text */
+    font-family: 'Source Sans 3', sans-serif;
 }
 
-/* Label styles */
-/*QLabel {*/
-/*    font-size: 14px;*/
-/*    color: #0CF2DB;            *//* aqua */
-/*}*/
+/* Title Label Style */
+QLabel#title_label {
+    font-size: 24px;
+    color: #0CF2DB;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
 
 /* Line edit styles */
 QLineEdit {
-    background-color: #8C2B2B; /* dark-red */
-    border: 1px solid #F21BCE; /* magenta */
+    background-color: #F21BCE;  /* magenta */
+    border: 2px solid #0CF2DB;  /* aqua */
+    border-radius: 10px;
     padding: 6px;
     font-size: 14px;
-    color: #FFFFFF;            /* light-text */
-    border-radius: 4px;
+    color: #E5FDFD;
+    font-weight: 800;
 }
 
-/* Combo box styles */
+QLineEdit::placeholder {
+    color: #E5FDFD; /* Ensure placeholder text is visible */
+}
+
+/* Custom QComboBox Style */
 QComboBox {
-    background-color: #8C2B2B; /* dark-red */
-    color: #FFFFFF;            /* light-text */
-    border: 1px solid #F21BCE; /* magenta */
+    background-color: #F21BCE; /* magenta */
+    color: #E5FDFD;            /* light-text */
+    border: 2px solid #0CF2DB; /* aqua */
     padding: 6px;
-    border-radius: 4px;
+    padding-right: 20px;       /* Space for the arrow */
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 14px;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    width: 20px;
+    border: none;
+}
+
+QComboBox::down-arrow {
+    image: url('resources/arrow-down.svg');
+    width: 12px;
+    height: 12px;
+}
+
+/* Style the popup list */
+QComboBox QAbstractItemView {
+    background-color: #320240; /* dark-purple */
+    border: 1px solid #F21BCE; /* magenta */
+    selection-background-color: #F21BCE;
+    selection-color: #FFFFFF;
 }
 
 /* Push button styles */
 QPushButton {
-    background-color: #F24F13; /* orange */
-    color: #FFFFFF;            /* light-text */
-    border: none;
+    background-color: #F21BCE; /* magenta */
+    color: #E5FDFD;
+    border: 2px solid #0CF2DB; /* aqua */
     padding: 10px;
     font-size: 14px;
-    border-radius: 5px;
-    margin-top: 10px;
+    border-radius: 10px;
+    font-weight: 800;
 }
 
 QPushButton:hover {
@@ -48,4 +81,17 @@ QPushButton:hover {
 
 QPushButton:pressed {
     background-color: #C63D0F; /* darker shade of orange */
+}
+
+/* Adjust the icon size inside buttons */
+QPushButton QIcon {
+    width: 16px;
+    height: 16px;
+}
+
+/* Adjust margins and padding for layouts */
+QGridLayout, QVBoxLayout, QHBoxLayout {
+    margin: 0px;
+    padding: 0px;
+    spacing: 10px;
 }
