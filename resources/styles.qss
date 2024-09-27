@@ -3,8 +3,9 @@
 
 /* General widget styles */
 QWidget {
-    background-color: #320240; /* dark-purple */
-    color: #0CF2DB;            /* light-text */
+    background-color: #1F1820;
+/*    background-color: #320240;  dark-purple*/
+    color: #0CF2DB;             light-text
     font-family: 'Source Sans 3', sans-serif;
 }
 
@@ -88,6 +89,56 @@ QPushButton QIcon {
     width: 16px;
     height: 16px;
 }
+
+/* Checkbox styles */
+QCheckBox {
+    color: #E5FDFD; /* Text color */
+    font-size: 14px;
+    font-weight: 600;
+    padding: 5px;
+}
+
+
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+}
+
+QCheckBox::indicator:unchecked {
+    background-color: #F21BCE; /* Color for unchecked state */
+    border: 2px solid #0CF2DB; /* Border color */
+    border-radius: 3px;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #0CF2DB; /* Color for checked state */
+    border: 2px solid #F21BCE; /* Border color */
+    border-radius: 3px;
+}
+
+/* Exclude input styles */
+QLineEdit#exclude_input {
+    background-color: #F21BCE;  /* magenta */
+    border: 2px solid #0CF2DB;  /* aqua */
+    border-radius: 10px;
+    padding: 6px;
+    font-size: 14px;
+    color: #E5FDFD;
+    font-weight: 800;
+    width: 400px;
+}
+
+QLineEdit#exclude_input::placeholder {
+    color: #E5FDFD; /* Ensure placeholder text is visible */
+}
+QLabel#exclude_label {
+    font-size: 14px;
+    color: #0CF2DB;
+    font-weight: 800;
+    margin-top: 5px;
+    margin-bottom: 3px;
+}
+
 
 /* Adjust margins and padding for layouts */
 QGridLayout, QVBoxLayout, QHBoxLayout {
