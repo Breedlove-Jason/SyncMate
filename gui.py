@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
 )
 
+
 from rsync_manager import RsyncThread
 
 
@@ -237,7 +238,60 @@ class SyncMateGUI(QWidget):
         return True
 
     def start_sync(self):
-        pass
+        if shutil.which("rsync") is None:
+            QMessageBox.critical(self, "Error", "Rsync is not installed or not found in PATH.")
+            return
+        if not self.validate_paths():
+            return
+
+        source = self.source_input.text()
+        dest = self.dest_input.text()
+
+        # Build the rsync command based on the selected options
+        rsync_command = ["rsync", "-a"] # '-a' is for archive mode
+
+        # Handle file or directory
+        if self.source_type.currentText() == "File":
+            rsync_command.remove('-a')  # Remove '-a' option for files
+            rsync_command.append('-r')  # Recursively copy
+
+        # Add options based on the selected checkboxes
+        if self.dry_run_checkbox.isChecked():
+            rsync_command.append("--dry-run")
+        if self.delete_checkbox.isChecked():
+            rsync_command.append("--delete")
+        if self.compress_checkbox.isChecked():
+            rsync_command.append("--compress")
+        if self.verbose_checkbox.isChecked():
+            rsync_command.append("--verbose")
+            rsync_command.append("--progress") # Add progress for verbose mode
+
+        # Handle exclude patterns
+        exclude_patterns = self.exclude_input.text()
+        if exclude_patterns:
+            patterns = [pattern.strip() for pattern in exclude_patterns.split(',')]
+
+            for pattern in patterns:
+                rsync_command.extend(["--exclude", pattern])
+
+        rsync_command.extend([source, dest])
+
+        # Confirm if '--delete' option is selected
+        if self.delete_checkbox.isChecked():
+            reply = QMessageBox.question(
+                self,
+                "Warning",
+                "Are you sure you want to delete files in the destination that are not in the source?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if reply == QMessageBox.No:
+                return
+
+        # Run rsync in separate thread
+        self.run_rsync_thread(rsync_command)
+
+
+
 
     def load_stylesheet(self):
         # Load stylesheet from external .qss file
