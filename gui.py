@@ -18,6 +18,9 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QSizePolicy,
     QCheckBox,
+    QDialog,
+    QTextEdit,
+    QProgressBar,
 )
 
 
@@ -29,7 +32,14 @@ class SyncMateGUI(QWidget):
         super().__init__()
 
         # Load custom font
-        source_sans_reg_path = os.path.join(os.path.dirname(__file__), "resources", "SourceSansPro-Regular.otf")
+        self.cancel_button = None
+        self.progress_bar = None
+        self.output_text = None
+        self.output_dialog = None
+        self.rsync_thread = None
+        source_sans_reg_path = os.path.join(
+            os.path.dirname(__file__), "resources", "SourceSansPro-Regular.otf"
+        )
         QFontDatabase.addApplicationFont(source_sans_reg_path)
         self.setFont(QFont("Source Sans Pro", 16))
 
@@ -238,8 +248,22 @@ class SyncMateGUI(QWidget):
         return True
 
     def start_sync(self):
+        """
+        Initiates the synchronization process using `rsync`. This method performs
+        the following steps:
+
+        1. Checks if `rsync` is available in the system's PATH.
+        2. Validates the source and destination paths.
+        3. Constructs the `rsync` command with appropriate options based on user inputs.
+        4. Confirms with the user if the `--delete` option is selected.
+        5. Executes the `rsync` command in a separate thread.
+
+        :return: None if prerequisites are not met or user cancels deletion confirmation.
+        """
         if shutil.which("rsync") is None:
-            QMessageBox.critical(self, "Error", "Rsync is not installed or not found in PATH.")
+            QMessageBox.critical(
+                self, "Error", "Rsync is not installed or not found in PATH."
+            )
             return
         if not self.validate_paths():
             return
@@ -248,12 +272,12 @@ class SyncMateGUI(QWidget):
         dest = self.dest_input.text()
 
         # Build the rsync command based on the selected options
-        rsync_command = ["rsync", "-a"] # '-a' is for archive mode
+        rsync_command = ["rsync", "-a"]  # '-a' is for archive mode
 
         # Handle file or directory
         if self.source_type.currentText() == "File":
-            rsync_command.remove('-a')  # Remove '-a' option for files
-            rsync_command.append('-r')  # Recursively copy
+            rsync_command.remove("-a")  # Remove '-a' option for files
+            rsync_command.append("-r")  # Recursively copy
 
         # Add options based on the selected checkboxes
         if self.dry_run_checkbox.isChecked():
@@ -264,12 +288,12 @@ class SyncMateGUI(QWidget):
             rsync_command.append("--compress")
         if self.verbose_checkbox.isChecked():
             rsync_command.append("--verbose")
-            rsync_command.append("--progress") # Add progress for verbose mode
+            rsync_command.append("--progress")  # Add progress for verbose mode
 
         # Handle exclude patterns
         exclude_patterns = self.exclude_input.text()
         if exclude_patterns:
-            patterns = [pattern.strip() for pattern in exclude_patterns.split(',')]
+            patterns = [pattern.strip() for pattern in exclude_patterns.split(",")]
 
             for pattern in patterns:
                 rsync_command.extend(["--exclude", pattern])
@@ -290,8 +314,92 @@ class SyncMateGUI(QWidget):
         # Run rsync in separate thread
         self.run_rsync_thread(rsync_command)
 
+    def run_rsync_thread(self, command):
+        """
+        :param command: The rsync command to execute in the thread.
+        :return: None
+        """
+        # Create an instance of the Rsync Thread
+        self.rsync_thread = RsyncThread(command)
+        self.rsync_thread.output_signal.connect(self.update_output)
+        self.rsync_thread.progress_signal.connect(self.update_progress)
+        self.rsync_thread.error_signal.connect(self.rsync_error)
+        self.rsync_thread.finished_signal.connect(self.rsync_finished)
 
+        # Create output dialog
+        self.output_dialog = QDialog(self)
+        self.output_dialog.setWindowTitle("Rsync Output")
+        dialog_layout = QVBoxLayout()
+        self.output_dialog.setLayout(dialog_layout)
 
+        self.output_text = QTextEdit()
+        self.output_text.setReadOnly(True)
+        dialog_layout.addWidget(self.output_text)
+
+        self.progress_bar = QProgressBar()
+        dialog_layout.addWidget(self.progress_bar)
+
+        # Add Cancel button
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.clicked.connect(self.cancel_rsync)
+        dialog_layout.addWidget(self.cancel_button)
+
+        self.output_dialog.show()
+
+        self.rsync_thread.start()
+
+    def update_output(self, text):
+        """
+        :param text: The text to be appended to the output.
+        :return: None
+        """
+        self.output_text.append(text)
+        self.output_text.ensureCursorVisible()
+
+    def update_progress(self, value):
+        """
+        :param value: The integer value to update the progress bar to.
+        :return: None
+        """
+        self.progress_bar.setValue(value)
+
+    def rsync_error(self, error_message):
+        """
+        :param error_message: A string containing the error message to be displayed in the critical message box.
+        :return: None
+        """
+        QMessageBox.critical(self, "Error", error_message)
+        self.output_dialog.close()
+
+    def rsync_finished(self, success):
+        """
+        :param success: A boolean indicating if the rsync operation was successful.
+        :return: None
+        """
+        if success:
+            QMessageBox.information(
+                self, "Success", "Rsync operation completed successfully."
+            )
+        self.output_dialog.close()
+
+    def cancel_rsync(self):
+        """
+        Prompts the user with a warning message to confirm the cancellation of the rsync operation.
+        If the user confirms and the rsync thread is running, waits for the thread to finish and closes the output dialog.
+
+        :return: None
+        """
+        reply = QMessageBox.question(
+            self,
+            "Warning",
+            "Are you sure you want to cancel the rsync operation?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply == QMessageBox.Yes:
+            if self.rsync_thread.isRunning():
+                self.rsync_thread.wait()
+                self.output_dialog.close()
+                QMessageBox.information(self, "Cancelled", "Rsync operation cancelled.")
 
     def load_stylesheet(self):
         # Load stylesheet from external .qss file
