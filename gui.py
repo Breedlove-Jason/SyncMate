@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QTextEdit,
     QProgressBar,
+    QSpinBox,
 )
 
 
@@ -87,6 +88,16 @@ class SyncMateGUI(QWidget):
         self.exclude_input = QLineEdit(self)
         self.exclude_input.setObjectName("exclude_input")
         self.exclude_input.setPlaceholderText("Exclude patterns")
+
+        # Bandwidth limit
+        self.bwlimit_label = QLabel("Bandwidth Limit (KB/s):", self)
+        self.bwlimit_label.setObjectName("bwlimit_label")
+
+        self.bwlimit_input = QSpinBox(self)
+        self.bwlimit_input.setRange(0, 999999)
+        self.bwlimit_input.setSuffix(" KB/s")
+        self.bwlimit_input.setObjectName("bwlimit_input")
+        self.bwlimit_input.setValue(0)
 
         # File/Directory selection type dropdown
         self.source_type = QComboBox(self)
@@ -167,6 +178,10 @@ class SyncMateGUI(QWidget):
         # Exclude pattern widgets
         options_layout.addWidget(self.exclude_label, 1, 0, 1, 2, Qt.AlignCenter)
         options_layout.addWidget(self.exclude_input, 2, 0, 1, 2, Qt.AlignCenter)
+
+        # Bandwidth limit widgets
+        options_layout.addWidget(self.bwlimit_label, 3, 0, 1, 1, Qt.AlignRight)
+        options_layout.addWidget(self.bwlimit_input, 3, 1, 1, 1, Qt.AlignLeft)
 
         # Add options layout to main layout
         grid_layout.addLayout(options_layout, 3, 0, 1, 3)
@@ -273,6 +288,11 @@ class SyncMateGUI(QWidget):
 
         # Build the rsync command based on the selected options
         rsync_command = ["rsync", "-a"]  # '-a' is for archive mode
+
+        # Bandwidth limit
+        bwlimit_value = self.bwlimit_input.value()
+        if bwlimit_value > 0:
+            rsync_command.extend(["--bwlimit", str(bwlimit_value)])
 
         # Handle file or directory
         if self.source_type.currentText() == "File":

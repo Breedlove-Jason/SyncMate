@@ -157,7 +157,51 @@ QLabel#exclude_label {
     margin-bottom: 3px;
 }
 
+/* Bandwidth Limit Label */
+QLabel#bwlimit_label {
+    font-size: 14px;
+    color: #0CF2DB;
+    font-weight: 800;
+    margin-top: 5px;
+}
 
+/* Bandwidth Limit Input */
+QSpinBox#bwlimit_input {
+    background-color: #F21BCE;
+    border: 2px solid #0CF2DB;
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 14px;
+    color: #E5FDFD;
+    font-weight: 800;
+    width: 120px;
+}
+
+QSpinBox#bwlimit_input::up-button, QSpinBox#bwlimit_input::down-button {
+    background-color: #F21BCE;
+    border: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 7px; /* Rounded corners */
+    margin-left: 5px; /* Padding on the left */
+}
+
+QSpinBox#bwlimit_input::up-button:hover, QSpinBox#bwlimit_input::down-button:hover {
+    background-color: #FF6A33; /* lighter shade */
+}
+
+QSpinBox#bwlimit_input::up-arrow, QSpinBox#bwlimit_input::down-arrow {
+    width: 20px;
+    height: 20px;
+}
+
+QSpinBox#bwlimit_input::up-arrow {
+    image: url('resources/arrow-up.svg');
+}
+
+QSpinBox#bwlimit_input::down-arrow {
+    image: url('resources/arrow-down.svg');
+}
 /* Adjust margins and padding for layouts */
 QGridLayout, QVBoxLayout, QHBoxLayout {
     margin: 0px;
