@@ -23,7 +23,9 @@ from PySide6.QtWidgets import (
     QDialog,
     QTextEdit,
     QProgressBar,
-    QSpinBox, QInputDialog,
+    QSpinBox,
+    QInputDialog,
+    QSystemTrayIcon,
 )
 
 
@@ -46,6 +48,15 @@ class SyncMateGUI(QWidget):
     """
     def __init__(self):
         super().__init__()
+
+        # Check if system tray is available
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            QMessageBox.critical(self, "Systray", "No system tray available on this system.")
+            sys.exit(1)
+
+        self.tray_icon = QSystemTrayIcon(self)
+        self.tray_icon.setIcon(QIcon("resources/sync.svg"))
+        self.tray_icon.show()
 
         # Add profiles directory, if it doesn't exist then create it
         self.profiles_dir = os.path.join(os.path.dirname(__file__), "profiles")
@@ -499,6 +510,7 @@ class SyncMateGUI(QWidget):
         :return: None
         """
         QMessageBox.critical(self, "Error", error_message)
+        self.tray_icon.showMessage("Rsync Error", error_message, QSystemTrayIcon.Critical, 5000)
         self.output_dialog.close()
 
     def rsync_finished(self, success):
@@ -508,8 +520,8 @@ class SyncMateGUI(QWidget):
         """
         if success:
             QMessageBox.information(
-                self, "Success", "Rsync operation completed successfully."
-            )
+                self, "Success", "Rsync operation completed successfully.")
+            self.tray_icon.showMessage("Rsync Completed", "Rsync operation completed successfully.", QSystemTrayIcon.Information, 5000)
         self.output_dialog.close()
 
     def cancel_rsync(self):
