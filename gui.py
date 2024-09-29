@@ -1,6 +1,8 @@
 import os
 import sys
 import shutil
+import json
+from typing import TextIO
 
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QPixmap, QFontDatabase, QFont
@@ -21,7 +23,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QTextEdit,
     QProgressBar,
-    QSpinBox,
+    QSpinBox, QInputDialog,
 )
 
 
@@ -29,8 +31,26 @@ from rsync_manager import RsyncThread
 
 
 class SyncMateGUI(QWidget):
+    """
+    SyncMateGUI class represents the graphical user interface for a Rsync tool application.
+    It provides various input fields, options, and buttons to configure and start Rsync synchronization tasks.
+
+    Methods
+    -------
+    __init__():
+        Initializes the GUI, including setting up directories, loading fonts and resources,
+        and arranging all interactive widgets.
+
+    load_profiles():
+        Loads the available profiles from the "profiles" directory and populates the profile dropdown menu.
+    """
     def __init__(self):
         super().__init__()
+
+        # Add profiles directory, if it doesn't exist then create it
+        self.profiles_dir = os.path.join(os.path.dirname(__file__), "profiles")
+        if not os.path.exists(self.profiles_dir):
+            os.makedirs(self.profiles_dir)
 
         # Load custom font
         self.cancel_button = None
@@ -89,6 +109,26 @@ class SyncMateGUI(QWidget):
         self.exclude_input.setObjectName("exclude_input")
         self.exclude_input.setPlaceholderText("Exclude patterns")
 
+        # Profiles
+        self.profile_label = QLabel("Profiles:", self)
+        self.profile_label.setObjectName("profile_label")
+
+        self.profile_combo = QComboBox(self)
+        self.profile_combo.setObjectName("profile_combo")
+        self.load_profiles()
+
+        self.save_profile_btn = QPushButton("Save Profile", self)
+        self.save_profile_btn.setObjectName("save_profile_btn")
+        self.save_profile_btn.clicked.connect(self.save_profile)
+
+        self.delete_profile_btn=QPushButton("Delete Profile", self)
+        self.delete_profile_btn.setObjectName("delete_profile_btn")
+        self.delete_profile_btn.clicked.connect(self.delete_profile)
+
+        self.load_profile_btn = QPushButton("Load Profile", self)
+        self.load_profile_btn.setObjectName("load_profile_btn")
+        self.load_profile_btn.clicked.connect(self.load_profile)
+
         # Bandwidth limit
         self.bwlimit_label = QLabel("Bandwidth Limit (KB/s):", self)
         self.bwlimit_label.setObjectName("bwlimit_label")
@@ -133,7 +173,7 @@ class SyncMateGUI(QWidget):
 
         # Set up the main layout
         main_layout = QVBoxLayout()
-        main_layout.addWidget(self.logo_label)
+        # main_layout.addWidget(self.logo_label)
 
         # Create a grid layout for inputs
         grid_layout = QGridLayout()
@@ -172,6 +212,19 @@ class SyncMateGUI(QWidget):
         top_checkboxes_layout.addWidget(self.verbose_checkbox)
         top_checkboxes_layout.setAlignment(Qt.AlignCenter)
 
+        # Profile Layout
+        profiles_layout = QHBoxLayout()
+        profiles_layout.addWidget(self.profile_label)
+        profiles_layout.addWidget(self.profile_combo)
+        profiles_layout.addWidget(self.load_profile_btn)
+        profiles_layout.addWidget(self.save_profile_btn)
+        profiles_layout.addWidget(self.delete_profile_btn)
+
+        # Add profiles_layout to main layout
+        main_layout.addLayout(profiles_layout)
+        main_layout.addWidget(self.logo_label)
+
+
         # Add the top checkboxes layout to the options layout
         options_layout.addLayout(top_checkboxes_layout, 0, 0, 1, 2, Qt.AlignCenter)
 
@@ -199,6 +252,61 @@ class SyncMateGUI(QWidget):
         self.setGeometry(300, 300, 600, 400)
         self.setWindowTitle("SyncMate Rsync Tool")
 
+    def load_profiles(self):
+        self.profile_combo.clear()
+        profiles = [f[:-5] for f in os.listdir(self.profiles_dir) if f.endswith('.json')]
+        self.profile_combo.addItems(profiles)
+
+    def save_profile(self):
+        profile_name, ok = QInputDialog.getText(self, "Save Profile", "Enter profile name:")
+        if ok and profile_name:
+            profile_data = {
+                'source': self.source_input.text(),
+                'destination': self.dest_input.text(),
+                'source_type': self.source_type.currentText(),
+                'dest_type': self.dest_type.currentText(),
+                'dry_run': self.dry_run_checkbox.isChecked(),
+                'delete': self.delete_checkbox.isChecked(),
+                'compress': self.compress_checkbox.isChecked(),
+                'verbose': self.verbose_checkbox.isChecked(),
+                'exclude_patterns': self.exclude_input.text(),
+                'bwlimit': self.bwlimit_input.value(),
+            }
+            profile_path = os.path.join(self.profiles_dir, f"{profile_name}.json")
+            with open(profile_path, 'w') as f:
+                json.dump(profile_data, f)
+            QMessageBox.information(self, "Profile Saved", f"{profile_name} saved successfully")
+            self.load_profiles()
+
+    def load_profile(self):
+        profile_name  = self.profile_combo.currentText()
+        if profile_name:
+            profile_path = os.path.join(self.profiles_dir, f"{profile_name}.json")
+            if os.path.exists(profile_path):
+                with open(profile_path, 'r') as f:
+                    profile_data = json.load(f)
+                    self.source_input.setText(profile_data.get('source', ''))
+                    self.dest_input.setText(profile_data.get('destination', ''))
+                    self.source_type.setCurrentText(profile_data.get('source_type', 'Directory'))
+                    self.dest_type.setCurrentText(profile_data.get('dest_type', 'Directory'))
+                    self.dry_run_checkbox.setChecked(profile_data.get('dry_run', False))
+                    self.delete_checkbox.setChecked(profile_data.get('delete', False))
+                    self.compress_checkbox.setChecked(profile_data.get('compress', False))
+                    self.verbose_checkbox.setChecked(profile_data.get('verbose', False))
+                    self.exclude_input.setText(profile_data.get('exclude_patterns', ''))
+                    self.bwlimit_input.setValue(profile_data.get('bwlimit', 0))
+                    QMessageBox.information(self, "Profile Loaded", f"Profile '{profile_name}' loaded successfully.")
+
+    def delete_profile(self):
+        profile_name = self.profile_combo.currentText()
+        if profile_name:
+            reply = QMessageBox.question(self, "Delete Profile", f"Are you sure you want to delete profile '{profile_name}'?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                profile_path = os.path.join(self.profiles_dir, f"{profile_name}.json")
+                if os.path.exists(profile_path):
+                    os.remove(profile_path)
+                    QMessageBox.information(self, "Profile Deleted", f"Profile '{profile_name}' deleted successfully.")
+                    self.load_profiles()
     def browse_source(self):
         """
         This method opens a file dialog to allow the user to select a source, either a directory or a file.
@@ -288,6 +396,8 @@ class SyncMateGUI(QWidget):
 
         # Build the rsync command based on the selected options
         rsync_command = ["rsync", "-a"]  # '-a' is for archive mode
+
+
 
         # Bandwidth limit
         bwlimit_value = self.bwlimit_input.value()
