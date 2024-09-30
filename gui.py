@@ -2,9 +2,10 @@ import os
 import sys
 import shutil
 import json
-from typing import TextIO
-
-from PySide6.QtCore import Qt, QSize
+import threading
+import time
+import schedule
+from PySide6.QtCore import Qt, QSize, QDateTime
 from PySide6.QtGui import QIcon, QPixmap, QFontDatabase, QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -26,6 +27,8 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QInputDialog,
     QSystemTrayIcon,
+    QListWidget,
+    QDateTimeEdit,
 )
 
 
@@ -46,22 +49,35 @@ class SyncMateGUI(QWidget):
     load_profiles():
         Loads the available profiles from the "profiles" directory and populates the profile dropdown menu.
     """
+
     def __init__(self):
         super().__init__()
 
+        # Add profiles directory, if it doesn't exist then create it
+        self.profiles_dir = os.path.join(os.path.dirname(__file__), "profiles")
+        if not os.path.exists(self.profiles_dir):
+            os.makedirs(self.profiles_dir)
+        
+        # Scheduler thread
+        self.scheduled_tasks = []
+        self.scheduler_thread = threading.Thread(target=self.run_scheduler, daemon=True)
+        self.scheduler_thread.start()
+
+        self.load_scheduled_tasks()
+
+
         # Check if system tray is available
         if not QSystemTrayIcon.isSystemTrayAvailable():
-            QMessageBox.critical(self, "Systray", "No system tray available on this system.")
+            QMessageBox.critical(
+                self, "Systray", "No system tray available on this system."
+            )
             sys.exit(1)
 
         self.tray_icon = QSystemTrayIcon(self)
         self.tray_icon.setIcon(QIcon("resources/sync.svg"))
         self.tray_icon.show()
 
-        # Add profiles directory, if it doesn't exist then create it
-        self.profiles_dir = os.path.join(os.path.dirname(__file__), "profiles")
-        if not os.path.exists(self.profiles_dir):
-            os.makedirs(self.profiles_dir)
+
 
         # Load custom font
         self.cancel_button = None
@@ -132,13 +148,25 @@ class SyncMateGUI(QWidget):
         self.save_profile_btn.setObjectName("save_profile_btn")
         self.save_profile_btn.clicked.connect(self.save_profile)
 
-        self.delete_profile_btn=QPushButton("Delete Profile", self)
+        self.delete_profile_btn = QPushButton("Delete Profile", self)
         self.delete_profile_btn.setObjectName("delete_profile_btn")
         self.delete_profile_btn.clicked.connect(self.delete_profile)
 
         self.load_profile_btn = QPushButton("Load Profile", self)
         self.load_profile_btn.setObjectName("load_profile_btn")
         self.load_profile_btn.clicked.connect(self.load_profile)
+
+        # Schedule button
+        self.schedule_button = QPushButton("Schedule Sync", self)
+        self.schedule_button.setObjectName("schedule_button")
+        self.schedule_button.clicked.connect(self.open_schedule_dialog)
+
+        # Schedule Tasks List
+        self.tasks_label = QLabel("Scheduled Tasks", self)
+        self.tasks_label.setObjectName("tasks_label")
+
+        self.tasks_list = QListWidget(self)
+        self.tasks_list.setObjectName("tasks_list")
 
         # Bandwidth limit
         self.bwlimit_label = QLabel("Bandwidth Limit (KB/s):", self)
@@ -233,8 +261,13 @@ class SyncMateGUI(QWidget):
 
         # Add profiles_layout to main layout
         main_layout.addLayout(profiles_layout)
+        # Add logo to main layout
         main_layout.addWidget(self.logo_label)
-
+        # Add Schedule button to main layout
+        main_layout.addWidget(self.schedule_button, alignment=Qt.AlignCenter)
+        # Add Scheduled tasks list to main layout
+        main_layout.addWidget(self.tasks_label)
+        main_layout.addWidget(self.tasks_list)
 
         # Add the top checkboxes layout to the options layout
         options_layout.addLayout(top_checkboxes_layout, 0, 0, 1, 2, Qt.AlignCenter)
@@ -263,61 +296,233 @@ class SyncMateGUI(QWidget):
         self.setGeometry(300, 300, 600, 400)
         self.setWindowTitle("SyncMate Rsync Tool")
 
+
+
+    def run_scheduler(self):
+        """
+        Continuously runs the scheduled tasks.
+        """
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+
+
+    def save_scheduled_tasks(self):
+        """
+        Saves the scheduled tasks to a JSON file.
+        """
+        tasks_file = os.path.join(self.profiles_dir, "scheduled_tasks.json")
+        with open(tasks_file, "w") as file:
+            json.dump(self.scheduled_tasks, file, default=str)
+
+    def load_scheduled_tasks(self):
+        """
+        Loads the scheduled tasks from a JSON file.
+        """
+        tasks_file = os.path.join(self.profiles_dir, "scheduled_tasks.json")
+        if os.path.exists(tasks_file):
+            with open(tasks_file, "r") as file:
+                self.scheduled_tasks = json.load(file)
+                for task in self.scheduled_tasks:
+                    run_time = QDateTime.fromString(task['time'], Qt.ISODate).toPyDateTime()
+                    schedule.every().day.at(run_time.strftime('%H:%M:%S')).do(self.execute_scheduled_task, task['profile']).tag(task['name'])
+                    self.tasks_list.addItem(task['name'])
+
+    def open_schedule_dialog(self):
+        """
+        Opens a dialog to schedule a sync task.
+
+        This method creates a dialog window with a date and time picker, allowing the user to schedule a sync task.
+        The selected date and time are passed to the `schedule_task` method when the "Schedule" button is clicked.
+
+        :return: None
+        """
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Schedule Sync")
+        layout = QVBoxLayout()
+        dialog.setLayout(layout)
+
+        datetime_label = QLabel("Select Date and Time:", dialog)
+        datetime_edit = QDateTimeEdit(dialog)
+        datetime_edit.setCalendarPopup(True)
+        datetime_edit.setDateTime(QDateTime.currentDateTime())
+
+        schedule_btn = QPushButton("Schedule", dialog)
+        schedule_btn.clicked.connect(
+            lambda: self.schedule_task(dialog, datetime_edit.dateTime())
+        )
+
+        layout.addWidget(datetime_label)
+        layout.addWidget(datetime_edit)
+        layout.addWidget(schedule_btn)
+
+        dialog.exec()
+
+
+    def schedule_task(self, dialog, datetime):
+        dialog.accept()
+        run_time = datetime.toPython()
+        profile_data = self.get_current_settings()
+        profile_name = f"Scheduled Task - {run_time.strftime('%Y-%m-%d %H:%M:%S')}"
+
+        # Save the task details
+        scheduled_task = {
+            'time':run_time,
+            'profile':profile_data,
+            'name':profile_name
+        }
+        self.scheduled_tasks.append(scheduled_task)
+        self.tasks_list.addItem(profile_name)
+
+        # Schedule the task
+        schedule_time_str = run_time.strftime('%Y-%m-%d %H:%M:%S')
+        schedule.every().day.at(run_time.strftime('%H:%M:%S')).do(self.execute_scheduled_task, profile_data).tag(profile_name)
+        QMessageBox.information(self, "Task Scheduled", f"Sync scheduled for {schedule_time_str}.")
+
+        # Save the scheduled tasks to a file
+        self.save_scheduled_tasks()
+
+    def get_current_settings(self):
+        return {
+            'source': self.source_input.text(),
+            'destination': self.dest_input.text(),
+            'source_type': self.source_type.currentText(),
+            'dest_type': self.dest_type.currentText(),
+            'dry_run': self.dry_run_checkbox.isChecked(),
+            'delete': self.delete_checkbox.isChecked(),
+            'compress': self.compress_checkbox.isChecked(),
+            'verbose': self.verbose_checkbox.isChecked(),
+            'exclude_patterns': self.exclude_input.text(),
+            'bwlimit': self.bwlimit_input.value(),
+        }
+
+    def execute_scheduled_task(self, profile_data):
+        # Restore settings
+        self.source_input.setText(profile_data.get('source', ''))
+        self.dest_input.setText(profile_data.get('destination', ''))
+        self.source_type.setCurrentText(profile_data.get('source_type', 'Directory'))
+        self.dest_type.setCurrentText(profile_data.get('dest_type', 'Directory'))
+        self.dry_run_checkbox.setChecked(profile_data.get('dry_run', False))
+        self.delete_checkbox.setChecked(profile_data.get('delete', False))
+        self.compress_checkbox.setChecked(profile_data.get('compress', False))
+        self.verbose_checkbox.setChecked(profile_data.get('verbose', False))
+        self.exclude_input.setText(profile_data.get('exclude_patterns', ''))
+        self.bwlimit_input.setValue(profile_data.get('bwlimit', 0))
+
+        # Start sync
+        self.start_sync()
+
     def load_profiles(self):
+        """
+        Loads available profiles into the profile combo box.
+
+        This method reads the profile files from the profiles directory, extracts the profile names,
+        and populates the profile combo box with these names.
+
+        :return: None
+        """
         self.profile_combo.clear()
-        profiles = [f[:-5] for f in os.listdir(self.profiles_dir) if f.endswith('.json')]
+        profiles = [f[:-5] for f in os.listdir(self.profiles_dir) if f.endswith(".json")]
         self.profile_combo.addItems(profiles)
 
+
     def save_profile(self):
+        """
+        Saves the current settings as a profile.
+
+        This method prompts the user to enter a profile name, then saves the current settings
+        (source, destination, options, etc.) to a JSON file in the profiles directory.
+
+        :return: None
+        """
         profile_name, ok = QInputDialog.getText(self, "Save Profile", "Enter profile name:")
         if ok and profile_name:
             profile_data = {
-                'source': self.source_input.text(),
-                'destination': self.dest_input.text(),
-                'source_type': self.source_type.currentText(),
-                'dest_type': self.dest_type.currentText(),
-                'dry_run': self.dry_run_checkbox.isChecked(),
-                'delete': self.delete_checkbox.isChecked(),
-                'compress': self.compress_checkbox.isChecked(),
-                'verbose': self.verbose_checkbox.isChecked(),
-                'exclude_patterns': self.exclude_input.text(),
-                'bwlimit': self.bwlimit_input.value(),
+                "source": self.source_input.text(),
+                "destination": self.dest_input.text(),
+                "source_type": self.source_type.currentText(),
+                "dest_type": self.dest_type.currentText(),
+                "dry_run": self.dry_run_checkbox.isChecked(),
+                "delete": self.delete_checkbox.isChecked(),
+                "compress": self.compress_checkbox.isChecked(),
+                "verbose": self.verbose_checkbox.isChecked(),
+                "exclude_patterns": self.exclude_input.text(),
+                "bwlimit": self.bwlimit_input.value(),
             }
             profile_path = os.path.join(self.profiles_dir, f"{profile_name}.json")
-            with open(profile_path, 'w') as f:
+            with open(profile_path, "w") as f:
                 json.dump(profile_data, f)
-            QMessageBox.information(self, "Profile Saved", f"{profile_name} saved successfully")
+            QMessageBox.information(
+                self, "Profile Saved", f"{profile_name} saved successfully"
+            )
             self.load_profiles()
 
+
     def load_profile(self):
-        profile_name  = self.profile_combo.currentText()
+        """
+        Loads the selected profile into the GUI.
+
+        This method reads the selected profile from the profiles directory and updates the GUI
+        with the settings stored in the profile.
+
+        :return: None
+        """
+        profile_name = self.profile_combo.currentText()
         if profile_name:
             profile_path = os.path.join(self.profiles_dir, f"{profile_name}.json")
             if os.path.exists(profile_path):
-                with open(profile_path, 'r') as f:
+                with open(profile_path, "r") as f:
                     profile_data = json.load(f)
-                    self.source_input.setText(profile_data.get('source', ''))
-                    self.dest_input.setText(profile_data.get('destination', ''))
-                    self.source_type.setCurrentText(profile_data.get('source_type', 'Directory'))
-                    self.dest_type.setCurrentText(profile_data.get('dest_type', 'Directory'))
-                    self.dry_run_checkbox.setChecked(profile_data.get('dry_run', False))
-                    self.delete_checkbox.setChecked(profile_data.get('delete', False))
-                    self.compress_checkbox.setChecked(profile_data.get('compress', False))
-                    self.verbose_checkbox.setChecked(profile_data.get('verbose', False))
-                    self.exclude_input.setText(profile_data.get('exclude_patterns', ''))
-                    self.bwlimit_input.setValue(profile_data.get('bwlimit', 0))
-                    QMessageBox.information(self, "Profile Loaded", f"Profile '{profile_name}' loaded successfully.")
+                    self.source_input.setText(profile_data.get("source", ""))
+                    self.dest_input.setText(profile_data.get("destination", ""))
+                    self.source_type.setCurrentText(
+                        profile_data.get("source_type", "Directory")
+                    )
+                    self.dest_type.setCurrentText(
+                        profile_data.get("dest_type", "Directory")
+                    )
+                    self.dry_run_checkbox.setChecked(profile_data.get("dry_run", False))
+                    self.delete_checkbox.setChecked(profile_data.get("delete", False))
+                    self.compress_checkbox.setChecked(profile_data.get("compress", False))
+                    self.verbose_checkbox.setChecked(profile_data.get("verbose", False))
+                    self.exclude_input.setText(profile_data.get("exclude_patterns", ""))
+                    self.bwlimit_input.setValue(profile_data.get("bwlimit", 0))
+                    QMessageBox.information(
+                        self,
+                        "Profile Loaded",
+                        f"Profile '{profile_name}' loaded successfully.",
+                    )
+
 
     def delete_profile(self):
+        """
+        Deletes the selected profile.
+
+        This method prompts the user for confirmation before deleting the selected profile
+        from the profiles directory.
+
+        :return: None
+        """
         profile_name = self.profile_combo.currentText()
         if profile_name:
-            reply = QMessageBox.question(self, "Delete Profile", f"Are you sure you want to delete profile '{profile_name}'?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            reply = QMessageBox.question(
+                self,
+                "Delete Profile",
+                f"Are you sure you want to delete profile '{profile_name}'?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
             if reply == QMessageBox.Yes:
                 profile_path = os.path.join(self.profiles_dir, f"{profile_name}.json")
                 if os.path.exists(profile_path):
                     os.remove(profile_path)
-                    QMessageBox.information(self, "Profile Deleted", f"Profile '{profile_name}' deleted successfully.")
+                    QMessageBox.information(
+                        self,
+                        "Profile Deleted",
+                        f"Profile '{profile_name}' deleted successfully.",
+                    )
                     self.load_profiles()
+
     def browse_source(self):
         """
         This method opens a file dialog to allow the user to select a source, either a directory or a file.
@@ -408,8 +613,6 @@ class SyncMateGUI(QWidget):
         # Build the rsync command based on the selected options
         rsync_command = ["rsync", "-a"]  # '-a' is for archive mode
 
-
-
         # Bandwidth limit
         bwlimit_value = self.bwlimit_input.value()
         if bwlimit_value > 0:
@@ -491,6 +694,7 @@ class SyncMateGUI(QWidget):
 
     def update_output(self, text):
         """
+        :param self:
         :param text: The text to be appended to the output.
         :return: None
         """
@@ -499,6 +703,7 @@ class SyncMateGUI(QWidget):
 
     def update_progress(self, value):
         """
+        :param self:
         :param value: The integer value to update the progress bar to.
         :return: None
         """
@@ -506,22 +711,32 @@ class SyncMateGUI(QWidget):
 
     def rsync_error(self, error_message):
         """
+        :param self:
         :param error_message: A string containing the error message to be displayed in the critical message box.
         :return: None
         """
         QMessageBox.critical(self, "Error", error_message)
-        self.tray_icon.showMessage("Rsync Error", error_message, QSystemTrayIcon.Critical, 5000)
+        self.tray_icon.showMessage(
+            "Rsync Error", error_message, QSystemTrayIcon.Critical, 5000
+        )
         self.output_dialog.close()
 
     def rsync_finished(self, success):
         """
+        :param self:
         :param success: A boolean indicating if the rsync operation was successful.
         :return: None
         """
         if success:
             QMessageBox.information(
-                self, "Success", "Rsync operation completed successfully.")
-            self.tray_icon.showMessage("Rsync Completed", "Rsync operation completed successfully.", QSystemTrayIcon.Information, 5000)
+                self, "Success", "Rsync operation completed successfully."
+            )
+            self.tray_icon.showMessage(
+                "Rsync Completed",
+                "Rsync operation completed successfully.",
+                QSystemTrayIcon.Information,
+                5000,
+            )
         self.output_dialog.close()
 
     def cancel_rsync(self):
@@ -550,8 +765,8 @@ class SyncMateGUI(QWidget):
             self.setStyleSheet(file.read())
 
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    ex = SyncMateGUI()
-    ex.show()
-    sys.exit(app.exec())
+# if __name__ == "__main__":
+#     app = QApplication(sys.argv)
+#     ex = SyncMateGUI()
+#     ex.show()
+#     sys.exit(app.exec())

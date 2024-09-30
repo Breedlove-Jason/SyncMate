@@ -13,3 +13,5 @@ PySide6_Addons==6.7.2
 PySide6_Essentials==6.7.2
 shiboken6==6.7.2
 tqdm==4.66.5
+
+schedule~=1.2.2

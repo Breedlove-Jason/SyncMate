@@ -246,6 +246,45 @@ QPushButton#save_profile_btn:pressed, QPushButton#load_profile_btn:pressed, QPus
     background-color: #C63D0F;
 }
 
+/* Schedule Button */
+QPushButton#schedule_button {
+    background-color: #F21BCE;
+    color: #E5FDFD;
+    border: 2px solid #0CF2DB;
+    padding: 6px;
+    font-size: 14px;
+    border-radius: 10px;
+    font-weight: 800;
+    min-width: 150px;
+}
+
+QPushButton#schedule_button:hover {
+    background-color: #FF6A33;
+}
+
+QPushButton#schedule_button:pressed {
+    background-color: #C63D0F;
+}
+
+/* Tasks Label */
+QLabel#tasks_label {
+    font-size: 14px;
+    color: #0CF2DB;
+    font-weight: 800;
+    margin-top: 10px;
+}
+
+/* Tasks List */
+QListWidget#tasks_list {
+    background-color: #F21BCE;
+    border: 2px solid #0CF2DB;
+    border-radius: 10px;
+    padding: 6px;
+    font-size: 14px;
+    color: #E5FDFD;
+}
+
+
 /* Adjust margins and padding for layouts */
 QGridLayout, QVBoxLayout, QHBoxLayout {
     margin: 0px;
